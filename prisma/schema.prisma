@@ -214,3 +214,28 @@ model AuditLog {
 
   @@map("audit_logs")
 }
+
+// Contact Inquiry Message
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  topic     String
+  message   String
+  status    String   @default("Unread") // Unread, Read, Replied, Archived
+  createdAt DateTime @default(now())
+
+  @@map("contact_messages")
+}
+
+// Newsletter Subscriber
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  status    String   @default("Subscribed") // Subscribed, Unsubscribed
+  createdAt DateTime @default(now())
+
+  @@map("newsletter_subscribers")
+}
+

@@ -215,4 +215,76 @@ export class MailService {
       this.logger.error(`Failed to send order confirmation email to ${email}`, error);
     }
   }
+
+  /** Send newsletter subscription welcome with discount code */
+  async sendNewsletterWelcome(email: string, promoCode: string): Promise<void> {
+    const html = `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 520px; margin: 0 auto; padding: 40px 24px; color: #2B2724;">
+        <div style="text-align: center; margin-bottom: 32px;">
+          <h1 style="font-size: 28px; font-weight: 300; letter-spacing: 2px; color: #2B2724; margin: 0;">Tagdiah</h1>
+          <p style="font-size: 9px; text-transform: uppercase; letter-spacing: 3px; color: #C4A265; margin-top: 4px;">Home Decor &amp; Arts</p>
+        </div>
+        <h2 style="font-size: 22px; font-weight: 300; margin-bottom: 8px;">Welcome to The Tagdiah Letter</h2>
+        <p style="font-size: 14px; color: #6B5E54; line-height: 1.6;">
+          Thank you for joining our community of handcrafted living enthusiasts. Each month, we share behind-the-scenes stories from our artisan workshops in Dhamrai, Bogura, and Sylhet.
+        </p>
+        <div style="background: #FAF6F0; border: 1px dashed #C4A265; padding: 20px; margin: 24px 0; text-align: center;">
+          <p style="font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #8C7E72; margin: 0 0 8px;">Your Welcome Gift</p>
+          <span style="font-size: 24px; font-weight: 600; font-family: monospace; letter-spacing: 3px; color: #2B2724;">${promoCode}</span>
+          <p style="font-size: 12px; color: #8C7E72; margin: 8px 0 0;">Enjoy 10% off your first order over ৳1,500.</p>
+        </div>
+        <hr style="border: none; border-top: 1px solid #E8E0D4; margin: 32px 0;" />
+        <p style="font-size: 11px; color: #A99E94; text-align: center;">
+          © ${new Date().getFullYear()} Tagdiah Home Decor &amp; Arts. All rights reserved.
+        </p>
+      </div>
+    `;
+
+    try {
+      await this.transporter.sendMail({
+        from: this.from,
+        to: email,
+        subject: `Welcome to Tagdiah — Here is your 10% gift (${promoCode})`,
+        html,
+      });
+      this.logger.log(`Newsletter welcome email sent to ${email}`);
+    } catch (error) {
+      this.logger.error(`Failed to send newsletter email to ${email}`, error);
+    }
+  }
+
+  /** Send contact receipt confirmation */
+  async sendContactReceipt(email: string, name: string, topic: string): Promise<void> {
+    const html = `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 520px; margin: 0 auto; padding: 40px 24px; color: #2B2724;">
+        <div style="text-align: center; margin-bottom: 32px;">
+          <h1 style="font-size: 28px; font-weight: 300; letter-spacing: 2px; color: #2B2724; margin: 0;">Tagdiah</h1>
+          <p style="font-size: 9px; text-transform: uppercase; letter-spacing: 3px; color: #C4A265; margin-top: 4px;">Home Decor &amp; Arts</p>
+        </div>
+        <h2 style="font-size: 20px; font-weight: 400; margin-bottom: 8px;">We've received your message</h2>
+        <p style="font-size: 14px; color: #6B5E54; line-height: 1.6;">
+          Hello <strong>${name}</strong>, thank you for reaching out regarding <em>"${topic}"</em>. A member of our studio team in Banani will review your inquiry and get back to you within one working day.
+        </p>
+        <p style="font-size: 13px; color: #8C7E72; margin-top: 20px;">
+          If your request is urgent, you can also WhatsApp us directly on <strong>+880 1712 004 118</strong>.
+        </p>
+        <hr style="border: none; border-top: 1px solid #E8E0D4; margin: 32px 0;" />
+        <p style="font-size: 11px; color: #A99E94; text-align: center;">
+          © ${new Date().getFullYear()} Tagdiah Home Decor &amp; Arts. All rights reserved.
+        </p>
+      </div>
+    `;
+
+    try {
+      await this.transporter.sendMail({
+        from: this.from,
+        to: email,
+        subject: `Message Received — Tagdiah Studio`,
+        html,
+      });
+      this.logger.log(`Contact confirmation email sent to ${email}`);
+    } catch (error) {
+      this.logger.error(`Failed to send contact receipt email to ${email}`, error);
+    }
+  }
 }

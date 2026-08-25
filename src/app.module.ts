@@ -11,6 +11,7 @@ import { CategoriesModule } from './modules/categories/categories.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { CouponsModule } from './modules/coupons/coupons.module';
+import { ContactModule } from './modules/contact/contact.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { CouponsModule } from './modules/coupons/coupons.module';
     OrdersModule,
     ReviewsModule,
     CouponsModule,
+    ContactModule,
   ],
   controllers: [AppController],
   providers: [AppService],
