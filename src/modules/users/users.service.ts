@@ -1,10 +1,15 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private mailService: MailService,
+  ) {}
 
   async findAll() {
     return this.prisma.user.findMany({
@@ -16,7 +21,10 @@ export class UsersService {
         avatar: true,
         role: true,
         department: true,
+        city: true,
+        address: true,
         status: true,
+        emailVerified: true,
         twoFactorEnabled: true,
         lastLogin: true,
         createdAt: true,
@@ -43,7 +51,10 @@ export class UsersService {
         avatar: true,
         role: true,
         department: true,
+        city: true,
+        address: true,
         status: true,
+        emailVerified: true,
         twoFactorEnabled: true,
         lastLogin: true,
         createdAt: true,
@@ -57,9 +68,20 @@ export class UsersService {
     const exists = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (exists) throw new BadRequestException(`Email ${dto.email} is already registered.`);
 
-    return this.prisma.user.create({
+    // Keep the plaintext password for the welcome email
+    const plaintextPassword = dto.password;
+
+    // Hash the password before storing
+    const hashedPassword = await bcrypt.hash(dto.password, 12);
+
+    const isCustomer = dto.role === 'Customer';
+
+    const user = await this.prisma.user.create({
       data: {
         ...dto,
+        password: hashedPassword,
+        // Admin-created accounts are pre-verified
+        emailVerified: true,
         avatar: `https://i.pravatar.cc/120?u=${encodeURIComponent(dto.name)}`,
       },
       select: {
@@ -72,6 +94,13 @@ export class UsersService {
         createdAt: true,
       },
     });
+
+    // If admin creates a Customer account, send welcome email with credentials
+    if (isCustomer) {
+      this.mailService.sendWelcomeCredentials(dto.email, dto.name, plaintextPassword);
+    }
+
+    return user;
   }
 
   async update(id: string, dto: UpdateUserDto) {
