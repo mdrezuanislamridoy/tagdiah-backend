@@ -9,7 +9,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// User / Staff model
+// Unified User model (Admin, Staff, and Customer)
 model User {
   id               String      @id @default(cuid())
   name             String
@@ -17,34 +17,25 @@ model User {
   password         String
   phone            String?
   avatar           String?
-  role             String      @default("Store Admin") // Super Admin, Store Admin, Store Manager, Support Agent, Customer
+  role             String      @default("Customer") // Super Admin, Store Admin, Store Manager, Support Agent, Customer
   department       String?
-  status           String      @default("Active") // Active, Inactive, Suspended
+  city             String?
+  address          String?
+  status           String      @default("Active") // Active, Inactive, Suspended, Blocked
+  emailVerified    Boolean     @default(false)
+  verifyCode       String?
+  verifyCodeExp    DateTime?
+  resetCode        String?
+  resetCodeExp     DateTime?
   twoFactorEnabled Boolean     @default(false)
   lastLogin        DateTime?
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
   auditLogs        AuditLog[]
+  orders           Order[]
+  reviews          Review[]
 
   @@map("users")
-}
-
-// Customer model
-model Customer {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  phone     String?
-  avatar    String?
-  city      String?
-  address   String?
-  status    String   @default("Active") // Active, Blocked, New
-  orders    Order[]
-  reviews   Review[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("customers")
 }
 
 // Category model
@@ -114,28 +105,28 @@ model Variation {
 
 // Order model
 model Order {
-  id          String      @id @default(cuid())
-  orderNumber String      @unique
-  customer    Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  customerId  String?
+  id           String      @id @default(cuid())
+  orderNumber  String      @unique
+  customer     User?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerId   String?
   customerName String
-  email       String
-  phone       String
-  address     String
-  city        String
-  subtotal    Float
-  delivery    Float       @default(0)
-  discount    Float       @default(0)
-  total       Float
-  payment     String      @default("Unpaid") // Paid, Unpaid, Refunded, COD
-  method      String      @default("bKash") // bKash, Card, COD
-  status      String      @default("Pending") // Pending, Confirmed, Processing, Shipped, Delivered, Cancelled
-  courier     String?
-  tracking    String?
-  notes       String?
-  items       OrderItem[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  email        String
+  phone        String
+  address      String
+  city         String
+  subtotal     Float
+  delivery     Float       @default(0)
+  discount     Float       @default(0)
+  total        Float
+  payment      String      @default("Unpaid") // Paid, Unpaid, Refunded, COD
+  method       String      @default("bKash") // bKash, Card, COD
+  status       String      @default("Pending") // Pending, Confirmed, Processing, Shipped, Delivered, Cancelled
+  courier      String?
+  tracking     String?
+  notes        String?
+  items        OrderItem[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 
   @@map("orders")
 }
@@ -163,7 +154,7 @@ model Review {
   id         String    @id @default(cuid())
   product    Product?  @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId  String?
-  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customer   User?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
   customerId String?
   author     String
   rating     Int       @default(5)
