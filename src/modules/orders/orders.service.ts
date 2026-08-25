@@ -117,7 +117,21 @@ export class OrdersService {
       });
     } catch {}
 
-    // 4. Update Product Stock levels
+    // 4. Create persistent Notification record for Admin Topbar
+    try {
+      await this.prisma.notification.create({
+        data: {
+          type: 'order',
+          title: `New order #${order.orderNumber}`,
+          meta: `${dto.customerName} · ৳${order.total.toLocaleString()} · Cash on Delivery`,
+          link: `/admin/orders/${order.orderNumber}`,
+          tone: 'text-brown',
+          read: false,
+        },
+      });
+    } catch {}
+
+    // 5. Update Product Stock levels
     try {
       for (const it of dto.items) {
         if (it.productId) {

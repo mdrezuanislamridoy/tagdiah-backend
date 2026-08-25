@@ -17,6 +17,12 @@ export class AppService {
 
   /* ── Dynamic System Notifications ── */
   async getNotifications() {
+    // 1. Fetch persistent notifications from DB
+    const dbNotifications = await this.prisma.notification.findMany({
+      take: 20,
+      orderBy: { createdAt: 'desc' },
+    });
+
     const notifications: Array<{
       id: string;
       type: 'order' | 'stock' | 'review' | 'message';
@@ -26,31 +32,50 @@ export class AppService {
       timestamp: Date;
       link: string;
       tone: string;
+      read: boolean;
     }> = [];
 
-    // 1. Recent Orders (Last 5 orders)
-    try {
-      const recentOrders = await this.prisma.order.findMany({
-        take: 5,
-        orderBy: { createdAt: 'desc' },
+    dbNotifications.forEach((n) => {
+      notifications.push({
+        id: n.id,
+        type: n.type as any,
+        title: n.title,
+        meta: n.meta,
+        at: this.formatTimeAgo(n.createdAt),
+        timestamp: n.createdAt,
+        link: n.link,
+        tone: n.tone,
+        read: n.read,
       });
+    });
 
-      recentOrders.forEach((o) => {
-        const timeAgo = this.formatTimeAgo(o.createdAt);
-        notifications.push({
-          id: `ord-${o.id}`,
-          type: 'order',
-          title: `New order ${o.orderNumber || o.id}`,
-          meta: `${o.customerName} · ৳${o.total.toLocaleString()} · ${o.status}`,
-          at: timeAgo,
-          timestamp: o.createdAt,
-          link: `/admin/orders/${o.orderNumber || o.id}`,
-          tone: 'text-brown',
+    // 2. Fetch Recent Orders if DB notifications are few
+    if (notifications.length < 5) {
+      try {
+        const recentOrders = await this.prisma.order.findMany({
+          take: 5,
+          orderBy: { createdAt: 'desc' },
         });
-      });
-    } catch {}
 
-    // 2. Low Stock Alerts
+        recentOrders.forEach((o) => {
+          if (!notifications.some((n) => n.link.includes(o.orderNumber || o.id))) {
+            notifications.push({
+              id: `ord-${o.id}`,
+              type: 'order',
+              title: `New order #${o.orderNumber || o.id}`,
+              meta: `${o.customerName} · ৳${o.total.toLocaleString()} · ${o.status}`,
+              at: this.formatTimeAgo(o.createdAt),
+              timestamp: o.createdAt,
+              link: `/admin/orders/${o.orderNumber || o.id}`,
+              tone: 'text-brown',
+              read: false,
+            });
+          }
+        });
+      } catch {}
+    }
+
+    // 3. Low Stock Alerts
     try {
       const lowStockProducts = await this.prisma.product.findMany({
         where: {
@@ -61,68 +86,53 @@ export class AppService {
       });
 
       lowStockProducts.forEach((p) => {
-        notifications.push({
-          id: `stock-${p.id}`,
-          type: 'stock',
-          title: `Low stock: ${p.name}`,
-          meta: p.stock === 0 ? 'Out of Stock · Restock urgently' : `Only ${p.stock} units left in warehouse`,
-          at: 'Live alert',
-          timestamp: p.updatedAt,
-          link: '/admin/inventory',
-          tone: p.stock === 0 ? 'text-danger' : 'text-gold',
-        });
+        if (!notifications.some((n) => n.id === `stock-${p.id}`)) {
+          notifications.push({
+            id: `stock-${p.id}`,
+            type: 'stock',
+            title: `Low stock: ${p.name}`,
+            meta: p.stock === 0 ? 'Out of Stock · Restock urgently' : `Only ${p.stock} units left in warehouse`,
+            at: 'Live alert',
+            timestamp: p.updatedAt,
+            link: '/admin/inventory',
+            tone: p.stock === 0 ? 'text-danger' : 'text-gold',
+            read: false,
+          });
+        }
       });
     } catch {}
 
-    // 3. Pending Reviews
-    try {
-      const pendingReviews = await this.prisma.review.findMany({
-        where: { status: 'Pending' },
-        include: { product: { select: { name: true } } },
-        take: 3,
-        orderBy: { createdAt: 'desc' },
-      });
-
-      if (pendingReviews.length > 0) {
-        notifications.push({
-          id: `rev-pending`,
-          type: 'review',
-          title: `${pendingReviews.length} review${pendingReviews.length > 1 ? 's' : ''} awaiting approval`,
-          meta: pendingReviews.map((r) => r.product?.name || 'Item').slice(0, 2).join(', '),
-          at: this.formatTimeAgo(pendingReviews[0].createdAt),
-          timestamp: pendingReviews[0].createdAt,
-          link: '/admin/reviews',
-          tone: 'text-terracotta',
-        });
-      }
-    } catch {}
-
-    // 4. Unread Contact Inquiries
-    try {
-      const unreadMessages = await this.prisma.contactMessage.findMany({
-        where: { status: 'Unread' },
-        take: 3,
-        orderBy: { createdAt: 'desc' },
-      });
-
-      unreadMessages.forEach((m) => {
-        notifications.push({
-          id: `msg-${m.id}`,
-          type: 'message',
-          title: `Inquiry from ${m.name}`,
-          meta: `${m.topic} · "${m.message.slice(0, 40)}..."`,
-          at: this.formatTimeAgo(m.createdAt),
-          timestamp: m.createdAt,
-          link: '/admin/contact',
-          tone: 'text-sage',
-        });
-      });
-    } catch {}
-
-    // Sort all notifications by most recent
+    // Sort all notifications by timestamp
     notifications.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
-    return notifications.slice(0, 10);
+    const unreadCount = notifications.filter((n) => !n.read).length;
+
+    return {
+      unreadCount,
+      notifications: notifications.slice(0, 15),
+    };
+  }
+
+  /* ── Mark Single Notification as Read ── */
+  async markAsRead(id: string) {
+    try {
+      await this.prisma.notification.update({
+        where: { id },
+        data: { read: true },
+      });
+    } catch {}
+    return { success: true, id };
+  }
+
+  /* ── Mark All Notifications as Read ── */
+  async markAllAsRead() {
+    try {
+      await this.prisma.notification.updateMany({
+        where: { read: false },
+        data: { read: true },
+      });
+    } catch {}
+    return { success: true, message: 'All notifications marked as read.' };
   }
 
   private formatTimeAgo(date: Date): string {
