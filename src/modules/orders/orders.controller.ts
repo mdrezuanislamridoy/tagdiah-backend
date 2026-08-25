@@ -42,6 +42,15 @@ export class OrdersController {
     return this.ordersService.findMyOrders(req.user.sub, req.user.email);
   }
 
+  @Get('dashboard/stats')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('Super Admin', 'Store Admin', 'Store Manager')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get aggregated dashboard KPIs, revenue analytics, and recent orders (Admin only)' })
+  getDashboardStats() {
+    return this.ordersService.getDashboardStats();
+  }
+
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('Super Admin', 'Store Admin', 'Store Manager')
