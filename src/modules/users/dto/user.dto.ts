@@ -31,6 +31,16 @@ export class CreateUserDto {
   @IsOptional()
   department?: string;
 
+  @ApiPropertyOptional({ example: 'Dhaka' })
+  @IsString()
+  @IsOptional()
+  city?: string;
+
+  @ApiPropertyOptional({ example: 'Flat 4B, House 27, Road 11, Dhanmondi' })
+  @IsString()
+  @IsOptional()
+  address?: string;
+
   @ApiPropertyOptional({ example: false, default: false })
   @IsOptional()
   twoFactorEnabled?: boolean;
@@ -51,6 +61,16 @@ export class UpdateUserDto {
   @IsString()
   @IsOptional()
   phone?: string;
+
+  @ApiPropertyOptional({ example: 'Dhaka' })
+  @IsString()
+  @IsOptional()
+  city?: string;
+
+  @ApiPropertyOptional({ example: 'Flat 4B, House 27, Road 11, Dhanmondi' })
+  @IsString()
+  @IsOptional()
+  address?: string;
 
   @ApiPropertyOptional({ example: 'Store Admin' })
   @IsString()
