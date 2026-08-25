@@ -149,4 +149,70 @@ export class MailService {
       this.logger.error(`Failed to send welcome email to ${email}`, error);
     }
   }
+
+  /** Send order confirmation email (Cash on Delivery) */
+  async sendOrderConfirmation(
+    email: string,
+    name: string,
+    orderNumber: string,
+    total: number,
+    address: string,
+    itemsCount: number
+  ): Promise<void> {
+    const html = `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 520px; margin: 0 auto; padding: 40px 24px; color: #2B2724;">
+        <div style="text-align: center; margin-bottom: 32px;">
+          <h1 style="font-size: 28px; font-weight: 300; letter-spacing: 2px; color: #2B2724; margin: 0;">Tagdiah</h1>
+          <p style="font-size: 9px; text-transform: uppercase; letter-spacing: 3px; color: #C4A265; margin-top: 4px;">Home Decor &amp; Arts</p>
+        </div>
+        <h2 style="font-size: 20px; font-weight: 400; margin-bottom: 8px;">Order Confirmed! (#${orderNumber})</h2>
+        <p style="font-size: 14px; color: #6B5E54; line-height: 1.6;">
+          Hello <strong>${name}</strong>, thank you for your order. We are carefully preparing your handcrafted pieces.
+        </p>
+        <div style="background: #FAF6F0; border: 1px solid #E8E0D4; padding: 20px 24px; margin: 24px 0;">
+          <table style="width: 100%; font-size: 14px;">
+            <tr>
+              <td style="color: #8C7E72; padding: 4px 0;">Order Number:</td>
+              <td style="color: #2B2724; font-weight: 600;">#${orderNumber}</td>
+            </tr>
+            <tr>
+              <td style="color: #8C7E72; padding: 4px 0;">Items Count:</td>
+              <td style="color: #2B2724; font-weight: 500;">${itemsCount} piece${itemsCount > 1 ? 's' : ''}</td>
+            </tr>
+            <tr>
+              <td style="color: #8C7E72; padding: 4px 0;">Payment Method:</td>
+              <td style="color: #2B2724; font-weight: 500;">Cash on Delivery (COD)</td>
+            </tr>
+            <tr>
+              <td style="color: #8C7E72; padding: 4px 0;">Total Due on Delivery:</td>
+              <td style="color: #2B2724; font-weight: 600; font-size: 16px;">৳${total.toLocaleString('en-BD')}</td>
+            </tr>
+            <tr>
+              <td style="color: #8C7E72; padding: 4px 0;">Delivery Address:</td>
+              <td style="color: #2B2724; font-weight: 500;">${address}</td>
+            </tr>
+          </table>
+        </div>
+        <p style="font-size: 13px; color: #6B5E54; text-align: center;">
+          Please prepare exact cash for our courier upon delivery.
+        </p>
+        <hr style="border: none; border-top: 1px solid #E8E0D4; margin: 32px 0;" />
+        <p style="font-size: 11px; color: #A99E94; text-align: center;">
+          © ${new Date().getFullYear()} Tagdiah Home Decor &amp; Arts. All rights reserved.
+        </p>
+      </div>
+    `;
+
+    try {
+      await this.transporter.sendMail({
+        from: this.from,
+        to: email,
+        subject: `Order #${orderNumber} Confirmed — Tagdiah Home Decor`,
+        html,
+      });
+      this.logger.log(`Order confirmation email sent to ${email} for order #${orderNumber}`);
+    } catch (error) {
+      this.logger.error(`Failed to send order confirmation email to ${email}`, error);
+    }
+  }
 }
