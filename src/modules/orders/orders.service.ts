@@ -63,7 +63,7 @@ export class OrdersService {
       },
     });
 
-    // Send confirmation email (non-blocking)
+    // 1. Send confirmation email to Customer (non-blocking)
     this.mailService.sendOrderConfirmation(
       dto.email,
       dto.customerName,
@@ -72,6 +72,70 @@ export class OrdersService {
       dto.address,
       dto.items.length
     );
+
+    // 2. Send new order alert email to Admin & Managers (non-blocking)
+    try {
+      const adminUsers = await this.prisma.user.findMany({
+        where: {
+          role: { in: ['Super Admin', 'Store Admin', 'Store Manager'] },
+          status: 'Active',
+        },
+        select: { email: true },
+      });
+
+      const adminEmails = adminUsers.map((u) => u.email);
+      if (!adminEmails.includes('admin@tagdiah.com')) {
+        adminEmails.push('admin@tagdiah.com');
+      }
+
+      for (const adminEmail of adminEmails) {
+        this.mailService.sendAdminNewOrderNotification(
+          adminEmail,
+          dto.customerName,
+          dto.email,
+          dto.phone,
+          order.orderNumber,
+          order.total,
+          dto.address,
+          dto.items
+        );
+      }
+    } catch {}
+
+    // 3. Create Audit Log for Admin notification feed
+    try {
+      await this.prisma.auditLog.create({
+        data: {
+          userId: userId || null,
+          actorName: dto.customerName,
+          actorEmail: dto.email,
+          action: 'Order Placed (COD)',
+          target: order.orderNumber,
+          details: `Customer placed order #${order.orderNumber} for ৳${order.total.toLocaleString()} with ${dto.items.length} item(s).`,
+          status: 'Success',
+        },
+      });
+    } catch {}
+
+    // 4. Update Product Stock levels
+    try {
+      for (const it of dto.items) {
+        if (it.productId) {
+          const product = await this.prisma.product.findUnique({ where: { id: it.productId } });
+          if (product) {
+            const nextStock = Math.max(0, product.stock - (it.qty || 1));
+            await this.prisma.product.update({
+              where: { id: product.id },
+              data: {
+                stock: nextStock,
+                status: nextStock === 0 ? 'Out of Stock' : 'Active',
+                availability: nextStock === 0 ? 'made-to-order' : nextStock <= product.lowStockAt ? 'low-stock' : 'in-stock',
+              },
+            });
+          }
+        }
+      }
+    } catch {}
 
     return order;
   }

@@ -216,6 +216,99 @@ export class MailService {
     }
   }
 
+  /** Send new order notification email to Admin / Operations team */
+  async sendAdminNewOrderNotification(
+    adminEmail: string,
+    customerName: string,
+    customerEmail: string,
+    customerPhone: string,
+    orderNumber: string,
+    total: number,
+    address: string,
+    items: Array<{ name: string; qty: number; price: number; variant?: string | null }>
+  ): Promise<void> {
+    const itemsHtml = items
+      .map(
+        (it) => `
+        <tr>
+          <td style="padding: 6px 0; border-bottom: 1px solid #E8E0D4; color: #2B2724;">${it.name} ${it.variant ? `(${it.variant})` : ''}</td>
+          <td style="padding: 6px 0; border-bottom: 1px solid #E8E0D4; text-align: center; color: #6B5E54;">${it.qty}</td>
+          <td style="padding: 6px 0; border-bottom: 1px solid #E8E0D4; text-align: right; font-weight: 500; color: #2B2724;">৳${(it.price * it.qty).toLocaleString('en-BD')}</td>
+        </tr>`
+      )
+      .join('');
+
+    const html = `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 24px; color: #2B2724;">
+        <div style="text-align: center; margin-bottom: 28px;">
+          <h1 style="font-size: 26px; font-weight: 300; letter-spacing: 2px; color: #2B2724; margin: 0;">Tagdiah Admin</h1>
+          <p style="font-size: 10px; text-transform: uppercase; letter-spacing: 3px; color: #C4A265; margin-top: 4px;">Storefront Order Notification</p>
+        </div>
+        <div style="background: #FAF6F0; border-left: 4px solid #C4A265; padding: 14px 18px; margin-bottom: 24px;">
+          <h2 style="font-size: 18px; font-weight: 600; margin: 0; color: #2B2724;">🚨 New Order Received: #${orderNumber}</h2>
+          <p style="font-size: 13px; color: #6B5E54; margin: 4px 0 0;">Total Amount Due (Cash on Delivery): <strong>৳${total.toLocaleString('en-BD')}</strong></p>
+        </div>
+
+        <h3 style="font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #8C7E72; margin-bottom: 10px;">Customer Details</h3>
+        <table style="width: 100%; font-size: 13.5px; margin-bottom: 20px; line-height: 1.6;">
+          <tr>
+            <td style="width: 120px; color: #8C7E72;">Customer:</td>
+            <td style="font-weight: 500; color: #2B2724;">${customerName}</td>
+          </tr>
+          <tr>
+            <td style="color: #8C7E72;">Email:</td>
+            <td style="color: #2B2724;"><a href="mailto:${customerEmail}" style="color: #6B5E54;">${customerEmail}</a></td>
+          </tr>
+          <tr>
+            <td style="color: #8C7E72;">Phone:</td>
+            <td style="color: #2B2724;"><strong>${customerPhone}</strong></td>
+          </tr>
+          <tr>
+            <td style="color: #8C7E72;">Delivery Address:</td>
+            <td style="color: #2B2724;">${address}</td>
+          </tr>
+        </table>
+
+        <h3 style="font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #8C7E72; margin-bottom: 10px;">Ordered Items</h3>
+        <table style="width: 100%; font-size: 13px; border-collapse: collapse; margin-bottom: 24px;">
+          <thead>
+            <tr style="border-bottom: 2px solid #E8E0D4; text-align: left; font-size: 12px; color: #8C7E72;">
+              <th style="padding: 6px 0;">Item</th>
+              <th style="padding: 6px 0; text-align: center;">Qty</th>
+              <th style="padding: 6px 0; text-align: right;">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+          </tbody>
+        </table>
+
+        <div style="text-align: center; margin: 28px 0;">
+          <a href="http://localhost:5173/admin/orders" style="background: #2B2724; color: #FAF6F0; text-decoration: none; padding: 12px 28px; font-size: 13px; font-weight: 500; display: inline-block; letter-spacing: 1px;">
+            Open Admin Orders Dashboard
+          </a>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid #E8E0D4; margin: 28px 0;" />
+        <p style="font-size: 11px; color: #A99E94; text-align: center;">
+          Tagdiah Home Decor &amp; Arts Automated Notification System.
+        </p>
+      </div>
+    `;
+
+    try {
+      await this.transporter.sendMail({
+        from: this.from,
+        to: adminEmail,
+        subject: `🚨 [New Order #${orderNumber}] ৳${total.toLocaleString('en-BD')} — ${customerName}`,
+        html,
+      });
+      this.logger.log(`Admin order notification email sent to ${adminEmail} for order #${orderNumber}`);
+    } catch (error) {
+      this.logger.error(`Failed to send admin order notification to ${adminEmail}`, error);
+    }
+  }
+
   /** Send newsletter subscription welcome with discount code */
   async sendNewsletterWelcome(email: string, promoCode: string): Promise<void> {
     const html = `

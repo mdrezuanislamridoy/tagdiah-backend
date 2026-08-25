@@ -141,11 +141,11 @@ export class AuthService {
     return { message: 'If the email is registered, a new code has been sent.' };
   }
 
-  /* ── Customer Login ── */
+  /* ── Customer / Storefront Login ── */
   async loginCustomer(email: string, password: string) {
     const user = await this.prisma.user.findUnique({ where: { email } });
 
-    if (!user || user.role !== 'Customer') {
+    if (!user) {
       throw new UnauthorizedException('Invalid email or password.');
     }
 

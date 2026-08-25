@@ -13,4 +13,11 @@ export class AppController {
   getHealth() {
     return this.appService.getHealthStatus();
   }
+
+  @Get('notifications')
+  @ApiOperation({ summary: 'Get live admin notifications feed' })
+  @ApiResponse({ status: 200, description: 'Aggregated notifications' })
+  getNotifications() {
+    return this.appService.getNotifications();
+  }
 }

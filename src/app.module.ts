@@ -12,6 +12,7 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { CouponsModule } from './modules/coupons/coupons.module';
 import { ContactModule } from './modules/contact/contact.module';
+import { SettingsModule } from './modules/settings/settings.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { ContactModule } from './modules/contact/contact.module';
     ReviewsModule,
     CouponsModule,
     ContactModule,
+    SettingsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
