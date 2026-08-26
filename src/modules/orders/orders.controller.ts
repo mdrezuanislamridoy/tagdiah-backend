@@ -22,14 +22,12 @@ export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create a new Cash on Delivery order' })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create a new Cash on Delivery order (Authenticated Customers Only)' })
   @ApiResponse({ status: 201, description: 'Order placed successfully' })
   create(@Body() dto: CreateOrderDto, @Request() req: any) {
-    // If the request has a bearer token or authenticated user, extract userId
-    let userId: string | undefined;
-    if (req.user && req.user.sub) {
-      userId = req.user.sub;
-    }
+    const userId = req.user?.sub;
     return this.ordersService.create(dto, userId);
   }
 
