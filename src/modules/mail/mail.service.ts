@@ -9,16 +9,20 @@ export class MailService {
   private logger = new Logger('MailService');
 
   constructor(private configService: ConfigService) {
-    this.from = this.configService.get<string>('SMTP_FROM', 'Tagdiah <tagdiah.bd@gmail.com>');
+    this.from = this.configService.get<string>('SMTP_FROM', 'Tagdiah <mdrezuanislamridoy@gmail.com>');
+
+    const host = this.configService.get<string>('SMTP_HOST') || 'smtp-relay.brevo.com';
+    const port = Number(this.configService.get('SMTP_PORT')) || 587;
+    const user = this.configService.get<string>('SMTP_USER') || 'b6c1c5001@smtp-brevo.com';
+    const pass =
+      this.configService.get<string>('SMTP_PASS') ||
+      this.configService.get<string>('BREVO_API_KEY');
 
     this.transporter = nodemailer.createTransport({
-      host: this.configService.get<string>('SMTP_HOST', 'smtp.gmail.com'),
-      port: this.configService.get<number>('SMTP_PORT', 587),
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: this.configService.get<string>('SMTP_USER'),
-        pass: this.configService.get<string>('SMTP_PASS'),
-      },
+      host,
+      port,
+      secure: port === 465,
+      auth: user && pass ? { user, pass } : undefined,
     });
   }
 
@@ -37,8 +41,8 @@ export class MailService {
       this.logger.log(`📨 [SERVER MAIL LOG] Sending email to ${to} — "${subject}"`);
     }
 
-    // 1. Try Brevo HTTP REST API (Port 443 — FREE 300 emails/day to ANY recipient, no domain lock!)
-    if (brevoApiKey && brevoApiKey.trim()) {
+    // 1. Try Brevo HTTP REST API (Only if key starts with xkeysib-)
+    if (brevoApiKey && brevoApiKey.trim() && brevoApiKey.startsWith('xkeysib-')) {
       try {
         const response = await fetch('https://api.brevo.com/v3/smtp/email', {
           method: 'POST',
@@ -52,7 +56,7 @@ export class MailService {
               email:
                 this.configService.get<string>('BREVO_SENDER_EMAIL') ||
                 this.configService.get<string>('MAIL_USER') ||
-                'tagdiah.bd@gmail.com',
+                'mdrezuanislamridoy@gmail.com',
             },
             to: [{ email: to }],
             subject,
@@ -61,7 +65,7 @@ export class MailService {
         });
 
         if (response.ok) {
-          this.logger.log(`✉️ Mail successfully sent to ${to} via Brevo HTTP API (Port 443)`);
+          this.logger.log(`✉️ Mail successfully sent to ${to} via Brevo HTTP API`);
           return;
         }
         const errData = await response.json().catch(() => ({}));
