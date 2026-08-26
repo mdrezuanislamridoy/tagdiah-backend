@@ -22,6 +22,52 @@ export class MailService {
     });
   }
 
+  /** Unified Mail Dispatcher (Supports Resend HTTP API on Port 443 + SMTP Fallback) */
+  private async dispatchMail(to: string, subject: string, html: string): Promise<void> {
+    const resendApiKey = this.configService.get<string>('RESEND_API_KEY');
+
+    // 1. Try Resend HTTP REST API (Port 443 — NEVER BLOCKED on Render / Cloud)
+    if (resendApiKey && resendApiKey.trim()) {
+      try {
+        const response = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${resendApiKey.trim()}`,
+          },
+          body: JSON.stringify({
+            from: this.from || 'Tagdiah <onboarding@resend.dev>',
+            to: [to],
+            subject,
+            html,
+          }),
+        });
+
+        if (response.ok) {
+          this.logger.log(`✉️ Mail successfully sent to ${to} via Resend HTTP API (Port 443)`);
+          return;
+        }
+        const errData = await response.json().catch(() => ({}));
+        this.logger.warn(`Resend HTTP Mail Warning: ${JSON.stringify(errData)}`);
+      } catch (err: any) {
+        this.logger.warn(`Resend HTTP API Error: ${err?.message}`);
+      }
+    }
+
+    // 2. Fallback to standard Nodemailer SMTP
+    try {
+      await this.transporter.sendMail({
+        from: this.from,
+        to,
+        subject,
+        html,
+      });
+      this.logger.log(`✉️ Mail successfully sent to ${to} via SMTP`);
+    } catch (error: any) {
+      this.logger.error(`Failed to send email to ${to} via SMTP: ${error?.message}`);
+    }
+  }
+
   /** Send email verification OTP */
   async sendVerificationCode(email: string, name: string, code: string): Promise<void> {
     const html = `
@@ -49,18 +95,7 @@ export class MailService {
       </div>
     `;
 
-    try {
-      await this.transporter.sendMail({
-        from: this.from,
-        to: email,
-        subject: `${code} — Verify your Tagdiah account`,
-        html,
-      });
-      this.logger.log(`Verification email sent to ${email}`);
-    } catch (error) {
-      this.logger.error(`Failed to send verification email to ${email}`, error);
-      // Don't throw — registration should still succeed even if email fails
-    }
+    await this.dispatchMail(email, `${code} — Verify your Tagdiah account`, html);
   }
 
   /** Send password reset OTP */
@@ -90,17 +125,7 @@ export class MailService {
       </div>
     `;
 
-    try {
-      await this.transporter.sendMail({
-        from: this.from,
-        to: email,
-        subject: `${code} — Reset your Tagdiah password`,
-        html,
-      });
-      this.logger.log(`Password reset email sent to ${email}`);
-    } catch (error) {
-      this.logger.error(`Failed to send password reset email to ${email}`, error);
-    }
+    await this.dispatchMail(email, `${code} — Reset your Tagdiah password`, html);
   }
 
   /** Send welcome credentials when admin creates a customer account */
@@ -137,17 +162,7 @@ export class MailService {
       </div>
     `;
 
-    try {
-      await this.transporter.sendMail({
-        from: this.from,
-        to: email,
-        subject: 'Your Tagdiah account has been created',
-        html,
-      });
-      this.logger.log(`Welcome credentials email sent to ${email}`);
-    } catch (error) {
-      this.logger.error(`Failed to send welcome email to ${email}`, error);
-    }
+    await this.dispatchMail(email, 'Your Tagdiah account has been created', html);
   }
 
   /** Send order confirmation email (Cash on Delivery) */
@@ -203,17 +218,7 @@ export class MailService {
       </div>
     `;
 
-    try {
-      await this.transporter.sendMail({
-        from: this.from,
-        to: email,
-        subject: `Order #${orderNumber} Confirmed — Tagdiah Home Decor`,
-        html,
-      });
-      this.logger.log(`Order confirmation email sent to ${email} for order #${orderNumber}`);
-    } catch (error) {
-      this.logger.error(`Failed to send order confirmation email to ${email}`, error);
-    }
+    await this.dispatchMail(email, `Order #${orderNumber} Confirmed — Tagdiah Home Decor`, html);
   }
 
   /** Send new order notification email to Admin / Operations team */
@@ -296,17 +301,11 @@ export class MailService {
       </div>
     `;
 
-    try {
-      await this.transporter.sendMail({
-        from: this.from,
-        to: adminEmail,
-        subject: `🚨 [New Order #${orderNumber}] ৳${total.toLocaleString('en-BD')} — ${customerName}`,
-        html,
-      });
-      this.logger.log(`Admin order notification email sent to ${adminEmail} for order #${orderNumber}`);
-    } catch (error) {
-      this.logger.error(`Failed to send admin order notification to ${adminEmail}`, error);
-    }
+    await this.dispatchMail(
+      adminEmail,
+      `🚨 [New Order #${orderNumber}] ৳${total.toLocaleString('en-BD')} — ${customerName}`,
+      html
+    );
   }
 
   /** Send newsletter subscription welcome with discount code */
@@ -333,17 +332,7 @@ export class MailService {
       </div>
     `;
 
-    try {
-      await this.transporter.sendMail({
-        from: this.from,
-        to: email,
-        subject: `Welcome to Tagdiah — Here is your 10% gift (${promoCode})`,
-        html,
-      });
-      this.logger.log(`Newsletter welcome email sent to ${email}`);
-    } catch (error) {
-      this.logger.error(`Failed to send newsletter email to ${email}`, error);
-    }
+    await this.dispatchMail(email, `Welcome to Tagdiah — Here is your 10% gift (${promoCode})`, html);
   }
 
   /** Send contact receipt confirmation */
@@ -368,16 +357,6 @@ export class MailService {
       </div>
     `;
 
-    try {
-      await this.transporter.sendMail({
-        from: this.from,
-        to: email,
-        subject: `Message Received — Tagdiah Studio`,
-        html,
-      });
-      this.logger.log(`Contact confirmation email sent to ${email}`);
-    } catch (error) {
-      this.logger.error(`Failed to send contact receipt email to ${email}`, error);
-    }
+    await this.dispatchMail(email, `Message Received — Tagdiah Studio`, html);
   }
 }
