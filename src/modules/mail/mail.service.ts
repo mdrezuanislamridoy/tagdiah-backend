@@ -27,6 +27,16 @@ export class MailService {
     const brevoApiKey = this.configService.get<string>('BREVO_API_KEY');
     const resendApiKey = this.configService.get<string>('RESEND_API_KEY');
 
+    // Extract OTP code if present in subject/HTML for instant server log visibility
+    const otpMatch = subject.match(/\b\d{6}\b/) || html.match(/>(\d{6})</);
+    const otpCode = otpMatch ? otpMatch[1] : null;
+
+    if (otpCode) {
+      this.logger.log(`🔑 [SERVER OTP LOG] Verification Code for ${to}: ${otpCode}`);
+    } else {
+      this.logger.log(`📨 [SERVER MAIL LOG] Sending email to ${to} — "${subject}"`);
+    }
+
     // 1. Try Brevo HTTP REST API (Port 443 — FREE 300 emails/day to ANY recipient, no domain lock!)
     if (brevoApiKey && brevoApiKey.trim()) {
       try {
@@ -83,18 +93,26 @@ export class MailService {
       }
     }
 
-    // 2. Fallback to standard Nodemailer SMTP
-    try {
-      await this.transporter.sendMail({
-        from: this.from,
-        to,
-        subject,
-        html,
-      });
-      this.logger.log(`✉️ Mail successfully sent to ${to} via SMTP`);
-    } catch (error: any) {
-      this.logger.error(`Failed to send email to ${to} via SMTP: ${error?.message}`);
+    // 3. Fallback to standard Nodemailer SMTP
+    const smtpUser = this.configService.get<string>('SMTP_USER');
+    if (smtpUser && smtpUser.trim()) {
+      try {
+        await this.transporter.sendMail({
+          from: this.from,
+          to,
+          subject,
+          html,
+        });
+        this.logger.log(`✉️ Mail successfully sent to ${to} via SMTP`);
+        return;
+      } catch (error: any) {
+        this.logger.error(`Failed to send email to ${to} via SMTP: ${error?.message}`);
+      }
     }
+
+    this.logger.warn(
+      `⚠️ No active Mail API Key configured (BREVO_API_KEY / RESEND_API_KEY / SMTP_USER). Email dispatch logged to server output.`
+    );
   }
 
   /** Send email verification OTP */
