@@ -13,6 +13,7 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
 import { CouponsModule } from './modules/coupons/coupons.module';
 import { ContactModule } from './modules/contact/contact.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { KeepAliveModule } from './modules/keep-alive/keep-alive.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { SettingsModule } from './modules/settings/settings.module';
     CouponsModule,
     ContactModule,
     SettingsModule,
+    KeepAliveModule,
   ],
   controllers: [AppController],
   providers: [AppService],
