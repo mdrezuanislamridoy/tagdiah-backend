@@ -34,6 +34,8 @@ model User {
   auditLogs        AuditLog[]
   orders           Order[]
   reviews          Review[]
+  cartItems        CartItem[]
+  wishlistItems    WishlistItem[]
 
   @@map("users")
 }
@@ -251,6 +253,34 @@ model Notification {
   createdAt DateTime @default(now())
 
   @@map("notifications")
+}
+
+// User Cart Item model (DB persisted)
+model CartItem {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  productId String
+  quantity  Int      @default(1)
+  color     String?
+  size      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, productId, color, size])
+  @@map("cart_items")
+}
+
+// User Wishlist Item model (DB persisted)
+model WishlistItem {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@map("wishlist_items")
 }
 
 

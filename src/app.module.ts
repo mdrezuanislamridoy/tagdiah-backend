@@ -14,6 +14,8 @@ import { CouponsModule } from './modules/coupons/coupons.module';
 import { ContactModule } from './modules/contact/contact.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { KeepAliveModule } from './modules/keep-alive/keep-alive.module';
+import { CartModule } from './modules/cart/cart.module';
+import { WishlistModule } from './modules/wishlist/wishlist.module';
 
 @Module({
   imports: [
@@ -30,6 +32,8 @@ import { KeepAliveModule } from './modules/keep-alive/keep-alive.module';
     ContactModule,
     SettingsModule,
     KeepAliveModule,
+    CartModule,
+    WishlistModule,
   ],
   controllers: [AppController],
   providers: [AppService],
