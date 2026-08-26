@@ -12,6 +12,11 @@ export class CreateReviewDto {
   @IsNotEmpty()
   author: string;
 
+  @ApiPropertyOptional({ example: 'customer@example.com' })
+  @IsOptional()
+  @IsString()
+  email?: string;
+
   @ApiProperty({ example: 5, minimum: 1, maximum: 5 })
   @IsNumber()
   @Min(1)

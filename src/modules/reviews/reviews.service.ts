@@ -7,7 +7,7 @@ export class ReviewsService {
   constructor(private prisma: PrismaService) {}
 
   /* ── Submit Review ── */
-  async create(dto: CreateReviewDto, userId?: string) {
+  async create(dto: CreateReviewDto, userId?: string, userEmail?: string) {
     // Check product exists by ID or Slug
     const product = await this.prisma.product.findFirst({
       where: {
@@ -17,6 +17,40 @@ export class ReviewsService {
 
     if (!product) {
       throw new NotFoundException(`Product ${dto.productId} not found.`);
+    }
+
+    const emailToVerify = dto.email || userEmail;
+
+    // Verify that customer has actually purchased this product
+    let hasPurchased = false;
+
+    if (userId || emailToVerify) {
+      const matchingOrder = await this.prisma.order.findFirst({
+        where: {
+          OR: [
+            ...(userId ? [{ customerId: userId }] : []),
+            ...(emailToVerify ? [{ email: emailToVerify }] : []),
+          ],
+          items: {
+            some: {
+              OR: [
+                { productId: product.id },
+                { name: { contains: product.name } },
+              ],
+            },
+          },
+        },
+      });
+
+      if (matchingOrder) {
+        hasPurchased = true;
+      }
+    }
+
+    if (!hasPurchased) {
+      throw new BadRequestException(
+        'Only verified buyers who have purchased this product can leave a review.'
+      );
     }
 
     const review = await this.prisma.review.create({

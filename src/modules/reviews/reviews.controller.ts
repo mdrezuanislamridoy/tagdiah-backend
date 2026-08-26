@@ -22,14 +22,16 @@ export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Submit a product review and rating (Public / Authenticated)' })
+  @ApiOperation({ summary: 'Submit a product review and rating (Verified Buyers Only)' })
   @ApiResponse({ status: 201, description: 'Review submitted' })
   create(@Body() dto: CreateReviewDto, @Request() req: any) {
     let userId: string | undefined;
-    if (req.user && req.user.sub) {
+    let userEmail: string | undefined;
+    if (req.user) {
       userId = req.user.sub;
+      userEmail = req.user.email;
     }
-    return this.reviewsService.create(dto, userId);
+    return this.reviewsService.create(dto, userId, userEmail);
   }
 
   @Get('product/:productId')
