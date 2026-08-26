@@ -22,11 +22,40 @@ export class MailService {
     });
   }
 
-  /** Unified Mail Dispatcher (Supports Resend HTTP API on Port 443 + SMTP Fallback) */
+  /** Unified Mail Dispatcher (Supports Brevo API + Resend API on Port 443 + SMTP Fallback) */
   private async dispatchMail(to: string, subject: string, html: string): Promise<void> {
+    const brevoApiKey = this.configService.get<string>('BREVO_API_KEY');
     const resendApiKey = this.configService.get<string>('RESEND_API_KEY');
 
-    // 1. Try Resend HTTP REST API (Port 443 — NEVER BLOCKED on Render / Cloud)
+    // 1. Try Brevo HTTP REST API (Port 443 — FREE 300 emails/day to ANY recipient, no domain lock!)
+    if (brevoApiKey && brevoApiKey.trim()) {
+      try {
+        const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'api-key': brevoApiKey.trim(),
+          },
+          body: JSON.stringify({
+            sender: { name: 'Tagdiah', email: 'tagdiah.bd@gmail.com' },
+            to: [{ email: to }],
+            subject,
+            htmlContent: html,
+          }),
+        });
+
+        if (response.ok) {
+          this.logger.log(`✉️ Mail successfully sent to ${to} via Brevo HTTP API (Port 443)`);
+          return;
+        }
+        const errData = await response.json().catch(() => ({}));
+        this.logger.warn(`Brevo HTTP Mail Warning: ${JSON.stringify(errData)}`);
+      } catch (err: any) {
+        this.logger.warn(`Brevo HTTP API Error: ${err?.message}`);
+      }
+    }
+
+    // 2. Try Resend HTTP REST API (Port 443 — NEVER BLOCKED on Render / Cloud)
     if (resendApiKey && resendApiKey.trim()) {
       try {
         const response = await fetch('https://api.resend.com/emails', {
