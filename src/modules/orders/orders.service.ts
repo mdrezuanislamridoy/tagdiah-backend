@@ -3,11 +3,14 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { CreateOrderDto, UpdateOrderStatusDto } from './dto/order.dto';
 
+import { SettingsService } from '../settings/settings.service';
+
 @Injectable()
 export class OrdersService {
   constructor(
     private prisma: PrismaService,
     private mailService: MailService,
+    private settingsService: SettingsService,
   ) {}
 
   /** Generate a unique branded order sequence like TGD-28941 */
@@ -63,6 +66,14 @@ export class OrdersService {
       },
     });
 
+    const currentSettings = this.settingsService.getAllSettings();
+    const notifSettings = currentSettings?.notifications || {
+      orderEmail: true,
+      lowStock: true,
+      reviewAlert: false,
+      marketing: true,
+    };
+
     // 1. Send confirmation email to Customer (non-blocking)
     this.mailService.sendOrderConfirmation(
       dto.email,
@@ -73,34 +84,36 @@ export class OrdersService {
       dto.items.length
     );
 
-    // 2. Send new order alert email to Admin & Managers (non-blocking)
-    try {
-      const adminUsers = await this.prisma.user.findMany({
-        where: {
-          role: { in: ['Super Admin', 'Store Admin', 'Store Manager'] },
-          status: 'Active',
-        },
-        select: { email: true },
-      });
+    // 2. Send new order alert email to Admin & Managers (if orderEmail setting is enabled)
+    if (notifSettings.orderEmail !== false) {
+      try {
+        const adminUsers = await this.prisma.user.findMany({
+          where: {
+            role: { in: ['Super Admin', 'Store Admin', 'Store Manager'] },
+            status: 'Active',
+          },
+          select: { email: true },
+        });
 
-      const adminEmails = adminUsers.map((u) => u.email);
-      if (!adminEmails.includes('admin@tagdiah.com')) {
-        adminEmails.push('admin@tagdiah.com');
-      }
+        const adminEmails = adminUsers.map((u) => u.email);
+        if (!adminEmails.includes('admin@tagdiah.com')) {
+          adminEmails.push('admin@tagdiah.com');
+        }
 
-      for (const adminEmail of adminEmails) {
-        this.mailService.sendAdminNewOrderNotification(
-          adminEmail,
-          dto.customerName,
-          dto.email,
-          dto.phone,
-          order.orderNumber,
-          order.total,
-          dto.address,
-          dto.items
-        );
-      }
-    } catch {}
+        for (const adminEmail of adminEmails) {
+          this.mailService.sendAdminNewOrderNotification(
+            adminEmail,
+            dto.customerName,
+            dto.email,
+            dto.phone,
+            order.orderNumber,
+            order.total,
+            dto.address,
+            dto.items
+          );
+        }
+      } catch {}
+    }
 
     // 3. Create Audit Log for Admin notification feed
     try {
@@ -131,7 +144,7 @@ export class OrdersService {
       });
     } catch {}
 
-    // 5. Update Product Stock levels
+    // 5. Update Product Stock levels & trigger Low Stock Alerts
     try {
       for (const it of dto.items) {
         if (it.productId) {
@@ -146,6 +159,20 @@ export class OrdersService {
                 availability: nextStock === 0 ? 'made-to-order' : nextStock <= product.lowStockAt ? 'low-stock' : 'in-stock',
               },
             });
+
+            // Trigger persistent low stock alert if lowStock notification setting is enabled
+            if (notifSettings.lowStock !== false && nextStock <= product.lowStockAt) {
+              await this.prisma.notification.create({
+                data: {
+                  type: 'stock',
+                  title: `Low stock alert: ${product.name}`,
+                  meta: `Only ${nextStock} unit(s) remaining (Threshold: ${product.lowStockAt})`,
+                  link: `/admin/inventory`,
+                  tone: 'text-amber-700',
+                  read: false,
+                },
+              });
+            }
           }
         }
       }

@@ -9,7 +9,7 @@ export class MailService {
   private logger = new Logger('MailService');
 
   constructor(private configService: ConfigService) {
-    this.from = this.configService.get<string>('SMTP_FROM', 'Tagdiah <noreply@tagdiah.com>');
+    this.from = this.configService.get<string>('SMTP_FROM', 'Tagdiah <tagdiah.bd@gmail.com>');
 
     this.transporter = nodemailer.createTransport({
       host: this.configService.get<string>('SMTP_HOST', 'smtp.gmail.com'),
@@ -356,10 +356,10 @@ export class MailService {
         </div>
         <h2 style="font-size: 20px; font-weight: 400; margin-bottom: 8px;">We've received your message</h2>
         <p style="font-size: 14px; color: #6B5E54; line-height: 1.6;">
-          Hello <strong>${name}</strong>, thank you for reaching out regarding <em>"${topic}"</em>. A member of our studio team in Banani will review your inquiry and get back to you within one working day.
+          Hello <strong>${name}</strong>, thank you for reaching out regarding <em>"${topic}"</em>. A member of our studio team will review your inquiry and get back to you within one working day.
         </p>
         <p style="font-size: 13px; color: #8C7E72; margin-top: 20px;">
-          If your request is urgent, you can also WhatsApp us directly on <strong>+880 1712 004 118</strong>.
+          If your request is urgent, you can also WhatsApp us directly on <strong>01332-131386</strong>.
         </p>
         <hr style="border: none; border-top: 1px solid #E8E0D4; margin: 32px 0;" />
         <p style="font-size: 11px; color: #A99E94; text-align: center;">
