@@ -36,7 +36,7 @@ export class MailService {
             Authorization: `Bearer ${resendApiKey.trim()}`,
           },
           body: JSON.stringify({
-            from: this.from || 'Tagdiah <onboarding@resend.dev>',
+            from: this.configService.get<string>('RESEND_FROM', 'onboarding@resend.dev'),
             to: [to],
             subject,
             html,
