@@ -66,6 +66,19 @@ export class OrdersService {
       },
     });
 
+    // Increment coupon usage count if discount applied
+    if (dto.discount > 0) {
+      try {
+        const coupons = await this.prisma.coupon.findMany({ where: { status: 'Active' } });
+        if (coupons.length > 0) {
+          await this.prisma.coupon.update({
+            where: { id: coupons[0].id },
+            data: { used: { increment: 1 } },
+          });
+        }
+      } catch {}
+    }
+
     const currentSettings = this.settingsService.getAllSettings();
     const notifSettings = currentSettings?.notifications || {
       orderEmail: true,

@@ -46,9 +46,9 @@ async function bootstrap() {
   });
 
   const port = process.env.PORT || 5000;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 
-  logger.log(`🚀 Tagdiah Backend is running on: http://localhost:${port}/api`);
+  logger.log(`🚀 Tagdiah Backend is running on port: ${port}`);
   logger.log(`📚 Swagger API Documentation available at: http://localhost:${port}/api/docs`);
 }
 bootstrap();

@@ -78,4 +78,9 @@ export class ValidateCouponDto {
   @IsNumber()
   @IsOptional()
   subtotal?: number;
+
+  @ApiPropertyOptional({ example: 'customer@tagdiah.com' })
+  @IsString()
+  @IsOptional()
+  email?: string;
 }

@@ -52,6 +52,7 @@ export class SettingsService {
       codEnabled: true,
       bkash: false,
       card: false,
+      allowDiscounts: true,
     },
     tax: {
       vatRate: 7.5,

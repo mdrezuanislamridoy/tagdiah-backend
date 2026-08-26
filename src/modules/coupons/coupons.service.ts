@@ -7,9 +7,14 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateCouponDto, UpdateCouponDto, ValidateCouponDto } from './dto/coupon.dto';
 
+import { SettingsService } from '../settings/settings.service';
+
 @Injectable()
 export class CouponsService implements OnModuleInit {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private settingsService: SettingsService,
+  ) {}
 
   async onModuleInit() {
     await this.seedCouponsIfEmpty();
@@ -17,6 +22,11 @@ export class CouponsService implements OnModuleInit {
 
   /* ── Validate Coupon Code for Storefront ── */
   async validate(dto: ValidateCouponDto) {
+    const allSettings = this.settingsService.getAllSettings();
+    if (allSettings?.payment?.allowDiscounts === false) {
+      throw new BadRequestException('Discount codes and coupon promotions are currently disabled by store administration.');
+    }
+
     const code = dto.code.trim().toUpperCase();
     const subtotal = dto.subtotal || 0;
 
@@ -38,6 +48,22 @@ export class CouponsService implements OnModuleInit {
 
     if (coupon.used >= coupon.limit) {
       throw new BadRequestException(`Coupon “${code}” usage limit has been reached.`);
+    }
+
+    if (dto.email) {
+      const email = dto.email.trim().toLowerCase();
+      const existingOrder = await this.prisma.order.findFirst({
+        where: {
+          email,
+          discount: { gt: 0 },
+        },
+      });
+
+      if (existingOrder) {
+        throw new BadRequestException(
+          `Coupon “${code}” has already been redeemed for ${email}. This discount code is valid for 1-time use only per customer.`
+        );
+      }
     }
 
     if (subtotal < coupon.minOrder) {
