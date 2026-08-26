@@ -47,7 +47,13 @@ export class MailService {
             'api-key': brevoApiKey.trim(),
           },
           body: JSON.stringify({
-            sender: { name: 'Tagdiah', email: 'tagdiah.bd@gmail.com' },
+            sender: {
+              name: 'Tagdiah',
+              email:
+                this.configService.get<string>('BREVO_SENDER_EMAIL') ||
+                this.configService.get<string>('MAIL_USER') ||
+                'tagdiah.bd@gmail.com',
+            },
             to: [{ email: to }],
             subject,
             htmlContent: html,
